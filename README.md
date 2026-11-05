@@ -2,6 +2,17 @@
 
 Self-hosted cold email platform for agencies: sending inboxes, warmup, multi-step campaigns, a unified reply inbox, lead finder, CRM, AI, and client reports. Your data stays on your server.
 
+## Try it in your browser (no install)
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/dimalemer-cloud/albdata?quickstart=1)
+
+1. Click the button above (or **Code → Codespaces → Create codespace on main**).
+2. Wait 3–5 minutes the first time while it installs, builds and loads demo data.
+3. albdata opens in a preview tab. If it doesn't, open the **Ports** tab and click the globe next to port 3000.
+4. Sign in with **demo@albdata.test / albdata-demo**.
+
+The demo uses fake leads and a built-in test mail server, so no real emails are sent. Lead Finder searches work in Codespaces because it has internet access. Stop the Codespace when you're done to save free hours (GitHub → Codespaces).
+
 ## Features
 
 | Area | What it does |
