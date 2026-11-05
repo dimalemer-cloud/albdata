@@ -27,6 +27,17 @@ const BIZ = {
 const CITIES = ["Tirana", "Durrës", "Vlorë", "Shkodër", "Milan", "Vienna", "Munich", "London"];
 
 async function main() {
+  if ((await db.campaign.count()) > 0 && !process.argv.includes("--force")) {
+    console.log("Demo data already present (use --force to add more).");
+    return db.$disconnect();
+  }
+  if ((await db.user.count()) === 0) {
+    const [email, password] = (process.env.DEMO_LOGIN || "demo@albdata.test:albdata-demo").split(":");
+    const bcrypt = require("bcryptjs");
+    await db.user.create({ data: { email, name: "Demo Owner", role: "OWNER", passwordHash: await bcrypt.hash(password, 10) } });
+    await db.workspace.upsert({ where: { id: "default" }, update: {}, create: { id: "default", name: "albdata" } });
+    console.log(`Created demo login ${email}`);
+  }
   const owner = await db.user.findFirst({ where: { role: "OWNER" } });
   // Clients
   const clients = [];
