@@ -62,7 +62,7 @@ export function Pipeline({ clients }: { clients: { id: string; name: string }[] 
               onDragOver={(e) => { e.preventDefault(); setOver(s.id); }}
               onDragLeave={() => setOver(null)}
               onDrop={() => { if (dragId) move(dragId, s.id); setDragId(null); setOver(null); }}
-              className={cn("flex min-w-[230px] flex-1 flex-col rounded-xl border bg-slate-100/70 p-2", over === s.id ? "border-brand bg-brand/5" : "border-transparent")}
+              className={cn("flex min-w-[200px] flex-1 flex-col rounded-xl border bg-slate-100/70 p-2", over === s.id ? "border-brand bg-brand/5" : "border-transparent")}
             >
               <div className="flex items-center justify-between px-2 py-1.5">
                 <span className="flex items-center gap-2 text-sm font-semibold"><span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />{s.name}<span className="text-xs font-normal text-slate-500">{items.length}</span></span>
