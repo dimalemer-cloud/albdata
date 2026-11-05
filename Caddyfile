@@ -1,0 +1,6 @@
+# HTTPS certificates are issued automatically by Let's Encrypt.
+# DOMAIN = app domain, TRACKING_DOMAINS = optional space-separated custom tracking domains.
+{$DOMAIN} {$TRACKING_DOMAINS} {
+	encode gzip
+	reverse_proxy app:3000
+}

@@ -1,0 +1,22 @@
+export type AccountRow = {
+  id: string;
+  email: string;
+  fromName: string;
+  provider: string;
+  status: "ACTIVE" | "PAUSED" | "ERROR";
+  lastError: string | null;
+  dailyLimit: number;
+  minGapMinutes: number;
+  signature: string;
+  tags: string[];
+  warmupEnabled: boolean;
+  warmupStart: number;
+  warmupIncrement: number;
+  warmupMax: number;
+  warmupReplyRate: number;
+  warmupStartedAt: string | null;
+  lastSyncAt: string | null;
+  sentToday: number;
+  warmupTarget: number;
+  health: { inbox: number; spam: number; sent: number; received: number; score: number | null };
+};

@@ -1,0 +1,425 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  CLIENT
+}
+
+model Workspace {
+  id              String   @id @default("default")
+  name            String   @default("albdata")
+  logoUrl         String?
+  brandColor      String   @default("#2563eb")
+  trackingDomain  String?
+  defaultTimezone String   @default("America/New_York")
+  anthropicKeyEnc String?
+  aiModel         String   @default("claude-opus-5-5")
+  placesKeyEnc    String?
+  verifyFromEmail String?
+  updatedAt       DateTime @updatedAt
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(MEMBER)
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  deals        Deal[]
+}
+
+model Client {
+  id         String     @id @default(cuid())
+  name       String
+  website    String?
+  notes      String?
+  shareToken String     @unique @default(cuid())
+  createdAt  DateTime   @default(now())
+  users      User[]
+  campaigns  Campaign[]
+  lists      LeadList[]
+  deals      Deal[]
+}
+
+enum AccountStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+model EmailAccount {
+  id               String         @id @default(cuid())
+  email            String         @unique
+  fromName         String
+  provider         String         @default("google")
+  smtpHost         String
+  smtpPort         Int
+  smtpSecure       Boolean        @default(true)
+  imapHost         String
+  imapPort         Int
+  imapSecure       Boolean        @default(true)
+  username         String
+  passwordEnc      String
+  signature        String         @default("")
+  dailyLimit       Int            @default(30)
+  minGapMinutes    Int            @default(9)
+  status           AccountStatus  @default(ACTIVE)
+  lastError        String?
+  tags             String[]       @default([])
+  warmupEnabled    Boolean        @default(false)
+  warmupStart      Int            @default(2)
+  warmupIncrement  Int            @default(2)
+  warmupMax        Int            @default(30)
+  warmupReplyRate  Int            @default(35)
+  warmupStartedAt  DateTime?
+  inboxLastUid     Int            @default(0)
+  inboxUidValidity String?
+  lastSyncAt       DateTime?
+  lastSentAt       DateTime?
+  createdAt        DateTime       @default(now())
+  campaigns        CampaignAccount[]
+  messages         Message[]
+  threads          Thread[]
+  warmupSent       WarmupEmail[]  @relation("warmupFrom")
+  warmupReceived   WarmupEmail[]  @relation("warmupTo")
+}
+
+model WarmupEmail {
+  id          String       @id @default(cuid())
+  fromId      String
+  from        EmailAccount @relation("warmupFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId        String
+  to          EmailAccount @relation("warmupTo", fields: [toId], references: [id], onDelete: Cascade)
+  messageId   String       @unique
+  parentId    String?
+  subject     String
+  isReply     Boolean      @default(false)
+  sentAt      DateTime     @default(now())
+  landedIn    String?
+  processedAt DateTime?
+  replyDueAt  DateTime?
+  repliedAt   DateTime?
+
+  @@index([fromId, sentAt])
+  @@index([toId, landedIn])
+}
+
+model LeadList {
+  id        String   @id @default(cuid())
+  name      String
+  clientId  String?
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  leads     Lead[]
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  REPLIED
+  INTERESTED
+  NOT_INTERESTED
+  MEETING_BOOKED
+  WON
+  LOST
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+model Lead {
+  id           String         @id @default(cuid())
+  listId       String
+  list         LeadList       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  email        String
+  firstName    String?
+  lastName     String?
+  companyName  String?
+  title        String?
+  website      String?
+  phone        String?
+  city         String?
+  country      String?
+  linkedin     String?
+  customFields Json           @default("{}")
+  status       LeadStatus     @default(NEW)
+  verifyStatus String?
+  verifiedAt   DateTime?
+  source       String?
+  createdAt    DateTime       @default(now())
+  campaigns    CampaignLead[]
+  messages     Message[]
+  threads      Thread[]
+  deals        Deal[]
+
+  @@unique([listId, email])
+  @@index([email])
+}
+
+model BlockedEntry {
+  id        String   @id @default(cuid())
+  value     String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+}
+
+model Campaign {
+  id                 String            @id @default(cuid())
+  name               String
+  clientId           String?
+  client             Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  status             CampaignStatus    @default(DRAFT)
+  timezone           String            @default("America/New_York")
+  days               Int[]             @default([1, 2, 3, 4, 5])
+  startTime          String            @default("09:00")
+  endTime            String            @default("17:00")
+  dailyLimit         Int               @default(100)
+  stopOnReply        Boolean           @default(true)
+  stopOnAutoReply    Boolean           @default(false)
+  stopForCompany     Boolean           @default(false)
+  openTracking       Boolean           @default(true)
+  linkTracking       Boolean           @default(false)
+  textOnly           Boolean           @default(false)
+  unsubscribeLink    Boolean           @default(true)
+  prioritizeNewLeads Boolean           @default(false)
+  createdAt          DateTime          @default(now())
+  launchedAt         DateTime?
+  steps              SequenceStep[]
+  accounts           CampaignAccount[]
+  leads              CampaignLead[]
+  messages           Message[]
+  events             Event[]
+  threads            Thread[]
+  deals              Deal[]
+}
+
+model SequenceStep {
+  id         String        @id @default(cuid())
+  campaignId String
+  campaign   Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  order      Int
+  delayDays  Int           @default(2)
+  variants   StepVariant[]
+}
+
+model StepVariant {
+  id      String       @id @default(cuid())
+  stepId  String
+  step    SequenceStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  label   String
+  subject String       @default("")
+  body    String       @default("")
+  enabled Boolean      @default(true)
+}
+
+model CampaignAccount {
+  campaignId String
+  campaign   Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  accountId  String
+  account    EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([campaignId, accountId])
+}
+
+enum CampaignLeadStatus {
+  ACTIVE
+  COMPLETED
+  REPLIED
+  BOUNCED
+  UNSUBSCRIBED
+  PAUSED
+  ERROR
+}
+
+model CampaignLead {
+  id            String             @id @default(cuid())
+  campaignId    String
+  campaign      Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  leadId        String
+  lead          Lead               @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  status        CampaignLeadStatus @default(ACTIVE)
+  currentStep   Int                @default(0)
+  nextSendAt    DateTime?          @default(now())
+  accountId     String?
+  rootMessageId String?
+  lastMessageId String?
+  lastSubject   String?
+  interest      String?
+  lastError     String?
+  createdAt     DateTime           @default(now())
+  messages      Message[]
+  events        Event[]
+
+  @@unique([campaignId, leadId])
+  @@index([campaignId, status, nextSendAt])
+}
+
+model Thread {
+  id            String        @id @default(cuid())
+  accountId     String
+  account       EmailAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  leadId        String?
+  lead          Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  campaignId    String?
+  campaign      Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  subject       String
+  contactEmail  String
+  contactName   String?
+  interest      String?
+  unread        Boolean       @default(true)
+  archived      Boolean       @default(false)
+  hasReply      Boolean       @default(false)
+  lastMessageAt DateTime      @default(now())
+  messages      Message[]
+
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String        @id @default(cuid())
+  direction      String
+  accountId      String
+  account        EmailAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  threadId       String?
+  thread         Thread?       @relation(fields: [threadId], references: [id], onDelete: SetNull)
+  campaignId     String?
+  campaign       Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignLeadId String?
+  campaignLead   CampaignLead? @relation(fields: [campaignLeadId], references: [id], onDelete: SetNull)
+  leadId         String?
+  lead           Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  stepIndex      Int?
+  variantId      String?
+  messageId      String?       @unique
+  inReplyTo      String?
+  references     String?
+  fromEmail      String
+  fromName       String?
+  toEmail        String
+  subject        String
+  bodyHtml       String
+  bodyText       String
+  sentAt         DateTime      @default(now())
+  openCount      Int           @default(0)
+  openedAt       DateTime?
+  clickCount     Int           @default(0)
+  clickedAt      DateTime?
+  isAutoReply    Boolean       @default(false)
+  isBounce       Boolean       @default(false)
+  category       String?
+  events         Event[]
+
+  @@index([campaignId, sentAt])
+}
+
+model Event {
+  id             String        @id @default(cuid())
+  type           String
+  campaignId     String?
+  campaign       Campaign?     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignLeadId String?
+  campaignLead   CampaignLead? @relation(fields: [campaignLeadId], references: [id], onDelete: Cascade)
+  messageId      String?
+  message        Message?      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  accountId      String?
+  stepIndex      Int?
+  variantId      String?
+  url            String?
+  createdAt      DateTime      @default(now())
+
+  @@index([campaignId, type, createdAt])
+  @@index([accountId, type, createdAt])
+}
+
+model Deal {
+  id         String    @id @default(cuid())
+  title      String
+  stage      String    @default("interested")
+  value      Float     @default(0)
+  notes      String    @default("")
+  position   Int       @default(0)
+  leadId     String?
+  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  campaignId String?
+  campaign   Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  ownerId    String?
+  owner      User?     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+model FinderSearch {
+  id          String         @id @default(cuid())
+  query       String
+  location    String
+  source      String
+  status      String         @default("QUEUED")
+  error       String?
+  resultCount Int            @default(0)
+  createdAt   DateTime       @default(now())
+  results     FinderResult[]
+}
+
+model FinderResult {
+  id          String       @id @default(cuid())
+  searchId    String
+  search      FinderSearch @relation(fields: [searchId], references: [id], onDelete: Cascade)
+  name        String
+  category    String?
+  address     String?
+  city        String?
+  country     String?
+  phone       String?
+  website     String?
+  domain      String?
+  rating      Float?
+  reviews     Int?
+  lat         Float?
+  lng         Float?
+  emails      String[]     @default([])
+  contacts    Json         @default("[]")
+  socials     Json         @default("{}")
+  crawlStatus String       @default("PENDING")
+  crawlError  String?
+  savedAt     DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([searchId])
+}
+
+model Job {
+  id        String    @id @default(cuid())
+  type      String
+  payload   Json      @default("{}")
+  status    String    @default("QUEUED")
+  progress  Int       @default(0)
+  total     Int       @default(0)
+  result    Json?
+  error     String?
+  runAt     DateTime  @default(now())
+  startedAt DateTime?
+  doneAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([status, runAt])
+}
